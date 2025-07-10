@@ -363,6 +363,13 @@
         // Initialize Firebase and load data
         async function initializeAndLoadData() {
             try {
+                // Check if firebaseConfig has projectId
+                if (!firebaseConfig || !firebaseConfig.projectId) {
+                    loadingApp.innerHTML = `<p class="text-red-500">Error: Firebase configuration is incomplete. 'projectId' is missing. Please ensure the environment provides a valid Firebase config.</p>`;
+                    console.error("Firebase configuration missing projectId:", firebaseConfig);
+                    return; // Stop initialization
+                }
+
                 // Initialize Firebase app
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
