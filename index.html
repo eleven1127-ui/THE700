@@ -48,60 +48,16 @@
             height: auto; /* Auto height based on content */
             overflow-y: hidden; /* Hide scrollbar initially */
         }
-
-        /* Modal styles */
-        .modal {
-            display: none; /* Hidden by default */
-            position: fixed; /* Stay in place */
-            z-index: 1000; /* Sit on top */
-            left: 0;
-            top: 0;
-            width: 100%; /* Full width */
-            height: 100%; /* Full height */
-            overflow: auto; /* Enable scroll if needed */
-            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background-color: #fefefe;
-            margin: auto;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            max-width: 80%;
-            max-height: 80%;
-            overflow-y: auto;
-            position: relative;
-        }
-        .close-button {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            position: absolute;
-            top: 10px;
-            right: 20px;
-        }
-        .close-button:hover,
-        .close-button:focus {
-            color: black;
-            text-decoration: none;
-            cursor: pointer;
-        }
     </style>
 </head>
 <body class="p-4 sm:p-6 md:p-8 lg:p-10 bg-gray-100 min-h-screen flex items-center justify-center">
     <div class="container mx-auto bg-white shadow-lg rounded-xl p-6 sm:p-8 md:p-10 max-w-4xl w-full">
         <h1 class="text-3xl sm:text-4xl font-bold text-center text-indigo-700 mb-8">Your Daily NEET 2026 Study Checklist</h1>
 
-        <div id="loadingApp" class="text-center text-indigo-600 my-8">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
-            <p class="mt-4">Loading your checklist...</p>
-        </div>
+        <!-- Removed loadingApp div as there's no async loading -->
 
-        <div id="appContent" class="hidden">
-            <p class="text-center text-gray-600 text-sm mb-4">Your User ID: <span id="userIdDisplay" class="font-semibold text-indigo-700">Loading...</span></p>
+        <div id="appContent">
+            <!-- Removed User ID display as Firebase is removed -->
 
             <div class="mb-10">
                 <h2 class="text-2xl font-semibold text-gray-800 mb-4 border-b-2 border-indigo-300 pb-2">Daily Study Tasks</h2>
@@ -123,7 +79,7 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
+                                    <!-- Removed Explain/Summarize button -->
                                 </td>
                             </tr>
                             <tr data-task-id="physics-revise-class-qs">
@@ -132,7 +88,6 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
                                 </td>
                             </tr>
                             <tr data-task-id="physics-dpp-module">
@@ -141,7 +96,6 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
                                 </td>
                             </tr>
                             <tr data-task-id="physics-kpp-extra-book">
@@ -150,7 +104,6 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
                                 </td>
                             </tr>
                             <tr data-task-id="physics-mahamanthan-hcv">
@@ -159,7 +112,6 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
                                 </td>
                             </tr>
 
@@ -170,7 +122,6 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
                                 </td>
                             </tr>
                             <tr data-task-id="chemistry-revise-ncert-class-qs">
@@ -179,7 +130,6 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
                                 </td>
                             </tr>
                             <tr data-task-id="chemistry-dpp-module">
@@ -188,7 +138,6 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
                                 </td>
                             </tr>
                             <tr data-task-id="chemistry-extra-book">
@@ -197,7 +146,6 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
                                 </td>
                             </tr>
                             <tr data-task-id="chemistry-high-level-qs">
@@ -206,7 +154,6 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
                                 </td>
                             </tr>
 
@@ -217,7 +164,6 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
                                 </td>
                             </tr>
                             <tr data-task-id="biology-revise-ncert-class-qs">
@@ -226,7 +172,6 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
                                 </td>
                             </tr>
                             <tr data-task-id="biology-dpp-module">
@@ -235,7 +180,6 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
                                 </td>
                             </tr>
                             <tr data-task-id="biology-extra-book">
@@ -244,7 +188,6 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
                                 </td>
                             </tr>
                             <tr data-task-id="biology-ncert-word-to-word">
@@ -253,7 +196,6 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
                                 </td>
                             </tr>
                         </tbody>
@@ -280,7 +222,6 @@
                                 <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
                                 <td class="px-3 py-4">
                                     <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes" placeholder="Topics tested:"></textarea>
-                                    <button class="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm explain-button">✨ Explain/Summarize</button>
                                 </td>
                             </tr>
                             <tr data-task-id="sum-up-prouds">
@@ -312,255 +253,16 @@
         </div>
     </div>
 
-    <!-- The Modal Structure -->
-    <div id="explanationModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h3 class="text-xl font-bold mb-4 text-indigo-700">Concept Explanation/Summary</h3>
-            <div id="explanationContent" class="text-gray-700">
-                <p>Loading...</p>
-            </div>
-            <div id="loadingIndicator" class="text-center mt-4 hidden">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto"></div>
-                <p class="text-indigo-600 mt-2">Generating explanation...</p>
-            </div>
-        </div>
-    </div>
+    <!-- Removed Modal Structure for explanations -->
 
-    <!-- Firebase SDKs and Application Logic -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Global variables for Firebase
-        let app;
-        let db;
-        let auth;
-        let userId;
-        let checklistDocRef;
-
-        // Get app ID and Firebase config from global variables provided by Canvas
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // Elements
-        const loadingApp = document.getElementById('loadingApp');
-        const appContent = document.getElementById('appContent');
-        const userIdDisplay = document.getElementById('userIdDisplay');
-
-        // Debounce function to limit Firestore writes
-        function debounce(func, delay) {
-            let timeout;
-            return function(...args) {
-                const context = this;
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(context, args), delay);
-            };
-        }
-
-        // Initialize Firebase and load data
-        async function initializeAndLoadData() {
-            try {
-                // Check if firebaseConfig has projectId
-                if (!firebaseConfig || !firebaseConfig.projectId) {
-                    loadingApp.innerHTML = `<p class="text-red-500">Error: Firebase configuration is incomplete. 'projectId' is missing. Please ensure the environment provides a valid Firebase config.</p>`;
-                    console.error("Firebase configuration missing projectId:", firebaseConfig);
-                    return; // Stop initialization
-                }
-
-                // Initialize Firebase app
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                // Authenticate user
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                // Listen for auth state changes to get the user ID
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        userIdDisplay.textContent = userId;
-                        checklistDocRef = doc(db, `artifacts/${appId}/users/${userId}/checklists`, 'dailyChecklist');
-                        
-                        // Set up real-time listener for checklist data
-                        onSnapshot(checklistDocRef, (docSnap) => {
-                            if (docSnap.exists()) {
-                                const data = docSnap.data();
-                                console.log("Current data: ", data);
-                                applyLoadedData(data);
-                            } else {
-                                console.log("No such document! Initializing empty checklist.");
-                                // Optionally, save an empty structure if document doesn't exist
-                                setDoc(checklistDocRef, {});
-                            }
-                            loadingApp.classList.add('hidden');
-                            appContent.classList.remove('hidden');
-                        }, (error) => {
-                            console.error("Error listening to document: ", error);
-                            loadingApp.innerHTML = `<p class="text-red-500">Error loading checklist: ${error.message}</p>`;
-                        });
-
-                    } else {
-                        console.log("No user signed in.");
-                        loadingApp.innerHTML = `<p class="text-red-500">Authentication failed. Please refresh.</p>`;
-                    }
-                });
-
-            } catch (error) {
-                console.error("Error initializing Firebase or authenticating:", error);
-                loadingApp.innerHTML = `<p class="text-red-500">Initialization Error: ${error.message}</p>`;
-            }
-        }
-
-        // Function to apply loaded data to the UI
-        function applyLoadedData(data) {
-            document.querySelectorAll('[data-task-id]').forEach(row => {
-                const taskId = row.dataset.taskId;
-                const taskData = data[taskId] || {};
-
-                const checkbox = row.querySelector('.task-checkbox');
-                if (checkbox) {
-                    checkbox.checked = taskData.checked || false;
-                }
-
-                const textarea = row.querySelector('textarea[data-field="notes"]');
-                if (textarea) {
-                    textarea.value = taskData.notes || '';
-                    // Trigger auto-resize for loaded content
-                    textarea.style.height = 'auto';
-                    textarea.style.height = (textarea.scrollHeight) + 'px';
-                }
-            });
-        }
-
-        // Function to save data to Firestore
-        const saveChecklistData = debounce(async () => {
-            if (!userId || !checklistDocRef) {
-                console.warn("User not authenticated or checklistDocRef not set. Cannot save.");
-                return;
-            }
-
-            const currentData = {};
-            document.querySelectorAll('[data-task-id]').forEach(row => {
-                const taskId = row.dataset.taskId;
-                const checkbox = row.querySelector('.task-checkbox');
-                const textarea = row.querySelector('textarea[data-field="notes"]');
-
-                currentData[taskId] = {
-                    checked: checkbox ? checkbox.checked : false,
-                    notes: textarea ? textarea.value : ''
-                };
-            });
-
-            try {
-                await setDoc(checklistDocRef, currentData);
-                console.log("Checklist data saved successfully!");
-            } catch (error) {
-                console.error("Error saving checklist data: ", error);
-            }
-        }, 500); // Debounce by 500ms
-
-        // Event listeners for checkboxes and textareas
-        document.addEventListener('change', (event) => {
-            if (event.target.classList.contains('task-checkbox')) {
-                saveChecklistData();
-            }
-        });
-
-        document.addEventListener('input', (event) => {
-            if (event.target.tagName === 'TEXTAREA' && event.target.dataset.field === 'notes') {
-                // Auto-resize textarea
-                event.target.style.height = 'auto';
-                event.target.style.height = (event.target.scrollHeight) + 'px';
-                saveChecklistData();
-            }
-        });
-
-        // Auto-resize textareas on initial load (redundant with applyLoadedData but good for manual edits)
+    <script>
+        // Auto-resize textareas based on content
         document.querySelectorAll('textarea').forEach(textarea => {
             textarea.addEventListener('input', () => {
                 textarea.style.height = 'auto';
                 textarea.style.height = (textarea.scrollHeight) + 'px';
             });
         });
-
-        // Gemini API Integration for Concept Explanation
-        const explainButtons = document.querySelectorAll('.explain-button');
-        const modal = document.getElementById('explanationModal');
-        const closeButton = document.querySelector('.close-button');
-        const explanationContent = document.getElementById('explanationContent');
-        const loadingIndicator = document.getElementById('loadingIndicator');
-
-        explainButtons.forEach(button => {
-            button.addEventListener('click', async (event) => {
-                const topicInput = event.target.previousElementSibling; // Get the textarea before the button
-                const topic = topicInput.value.trim();
-
-                if (topic === "") {
-                    explanationContent.innerHTML = "<p class='text-red-500'>Please enter a topic to explain/summarize.</p>";
-                    modal.style.display = 'flex'; // Show modal
-                    return;
-                }
-
-                explanationContent.innerHTML = ""; // Clear previous content
-                loadingIndicator.classList.remove('hidden'); // Show loading indicator
-                modal.style.display = 'flex'; // Show modal
-
-                try {
-                    let chatHistory = [];
-                    const prompt = `Explain or summarize the concept of "${topic}" in simple terms, suitable for a NEET aspirant. Focus on key definitions, principles, and important points relevant to NEET.`;
-                    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-                    const payload = { contents: chatHistory };
-                    const apiKey = ""; // Canvas will inject the API key here
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    const result = await response.json();
-
-                    if (result.candidates && result.candidates.length > 0 &&
-                        result.candidates[0].content && result.candidates[0].content.parts &&
-                        result.candidates[0].content.parts.length > 0) {
-                        const text = result.candidates[0].content.parts[0].text;
-                        explanationContent.innerHTML = `<p>${text}</p>`;
-                    } else {
-                        explanationContent.innerHTML = "<p class='text-red-500'>Could not get an explanation. Please try again or refine your topic.</p>";
-                        console.error("Gemini API response structure unexpected:", result);
-                    }
-                } catch (error) {
-                    explanationContent.innerHTML = `<p class='text-red-500'>An error occurred: ${error.message}. Please check your network connection or try again.</p>`;
-                    console.error("Error fetching from Gemini API:", error);
-                } finally {
-                    loadingIndicator.classList.add('hidden'); // Hide loading indicator
-                }
-            });
-        });
-
-        // Close the modal when the close button is clicked
-        closeButton.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
-
-        // Close the modal when clicking outside of it
-        window.addEventListener('click', (event) => {
-            if (event.target == modal) {
-                modal.style.display = 'none';
-            }
-        });
-
-        // Initialize the app when the window loads
-        window.onload = initializeAndLoadData;
     </script>
 </body>
 </html>
