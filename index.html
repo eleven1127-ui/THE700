@@ -7,39 +7,6 @@
     <!-- Tailwind CSS CDN for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, arrayUnion, arrayRemove, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Global Firebase variables accessible in the script below
-        window.firebaseApp = initializeApp(JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}'));
-        window.db = getFirestore(window.firebaseApp);
-        window.auth = getAuth(window.firebaseApp);
-
-        // Authenticate user
-        onAuthStateChanged(window.auth, async (user) => {
-            if (user) {
-                console.log("User is signed in:", user.uid);
-                window.currentUserId = user.uid;
-                document.getElementById('displayUserId').textContent = `Your User ID: ${user.uid}`;
-                renderGroups(); // Render groups once authenticated
-            } else {
-                console.log("No user signed in. Attempting anonymous sign-in.");
-                try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(window.auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(window.auth);
-                    }
-                } catch (error) {
-                    console.error("Firebase authentication error:", error);
-                    document.getElementById('displayUserId').textContent = `Authentication Error: ${error.message}`;
-                }
-            }
-        });
-    </script>
     <style>
         /* Custom styles for the app */
         body {
@@ -427,6 +394,58 @@
             color: #6b7280;
         }
 
+        /* Custom Alert Modal Styles */
+        .custom-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .custom-modal-content {
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            text-align: center;
+            transform: scale(0.9);
+            animation: popIn 0.2s forwards;
+        }
+        @keyframes popIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .custom-modal-content h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+        .custom-modal-content p {
+            font-size: 1rem;
+            color: #4b5563;
+            margin-bottom: 1.5rem;
+        }
+        .custom-modal-content button {
+            background-color: #3b82f6;
+            color: #ffffff;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .custom-modal-content button:hover {
+            background-color: #2563eb;
+        }
+
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .container {
@@ -618,70 +637,100 @@
         </div>
     </div>
 
-    <script type="module">
-        // Import Firebase modules (already imported globally via script type="module" in head)
-        // This block is for reference to show which functions are used.
-        // const { initializeApp } = window.firebase; // Not needed, already global
-        // const { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } = window.firebase; // Not needed
-        // const { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, arrayUnion, arrayRemove, getDocs } = window.firebase; // Not needed
+    <!-- Custom Alert Modal HTML -->
+    <div id="customAlertModal" class="custom-modal-overlay hidden">
+        <div class="custom-modal-content">
+            <h3 id="customAlertTitle">Alert</h3>
+            <p id="customAlertMessage"></p>
+            <button id="customAlertCloseButton">OK</button>
+        </div>
+    </div>
 
-        // Global Firebase variables (set in the head script)
-        const db = window.db;
-        const auth = window.auth;
-        let currentUserId = window.currentUserId; // Will be set by onAuthStateChanged
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    <script>
+        // Custom Alert Function
+        function showAlert(message, title = "Alert") {
+            const modal = document.getElementById('customAlertModal');
+            const modalTitle = document.getElementById('customAlertTitle');
+            const modalMessage = document.getElementById('customAlertMessage');
+            const closeButton = document.getElementById('customAlertCloseButton');
+
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modal.classList.remove('hidden');
+
+            closeButton.onclick = () => {
+                modal.classList.add('hidden');
+            };
+
+            // Close when clicking outside the modal content
+            modal.onclick = (event) => {
+                if (event.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            };
+        }
+
+        // Generate a unique user ID using crypto.randomUUID()
+        function generateUserId() {
+            let userId = localStorage.getItem('currentUserId');
+            if (!userId) {
+                userId = crypto.randomUUID();
+                localStorage.setItem('currentUserId', userId);
+            }
+            return userId;
+        }
+
+        let currentUserId = generateUserId();
+        document.getElementById('displayUserId').textContent = `Your User ID: ${currentUserId}`;
+
+        const appId = 'daily-tracker-app'; // A fixed app ID for local storage context
 
         let activeGroupId = null;
-        let unsubscribeFromMessages = null; // To manage real-time listener
 
         // --- Main Tab Switching Logic ---
         const dailyTrackerTab = document.getElementById('dailyTrackerTab');
         const todoListTab = document.getElementById('todoListTab');
         const tracTab = document.getElementById('tracTab');
-        const chatTab = document.getElementById('chatTab'); // New chat tab
+        const chatTab = document.getElementById('chatTab');
         const dailyTrackerContent = document.getElementById('dailyTrackerContent');
         const todoListContent = document.getElementById('todoListContent');
         const tracContent = document.getElementById('tracContent');
-        const chatContent = document.getElementById('chatContent'); // New chat content
+        const chatContent = document.getElementById('chatContent');
 
         function showMainTab(tabId) {
-            // Remove 'active' class from all main tabs and content
             dailyTrackerTab.classList.remove('active');
             todoListTab.classList.remove('active');
             tracTab.classList.remove('active');
-            chatTab.classList.remove('active'); // New
+            chatTab.classList.remove('active');
             dailyTrackerContent.classList.remove('active');
             todoListContent.classList.remove('active');
             tracContent.classList.remove('active');
-            chatContent.classList.remove('active'); // New
+            chatContent.classList.remove('active');
 
-            // Add 'active' class to the selected main tab and content
             if (tabId === 'dailyTracker') {
                 dailyTrackerTab.classList.add('active');
                 dailyTrackerContent.classList.add('active');
             } else if (tabId === 'todoList') {
                 todoListTab.classList.add('active');
                 todoListContent.classList.add('active');
-                renderTodoCategories(); // Re-render To-Do list when tab is active
+                renderTodoCategories();
             } else if (tabId === 'trac') {
                 tracTab.classList.add('active');
                 tracContent.classList.add('active');
-                showTracSubTab('bio'); // Default to Biology sub-tab
-            } else if (tabId === 'chat') { // New chat tab logic
+                showTracSubTab('bio');
+            } else if (tabId === 'chat') {
                 chatTab.classList.add('active');
                 chatContent.classList.add('active');
-                if (currentUserId) { // Only render groups if authenticated
-                    renderGroups();
-                }
+                renderGroups(); // Render groups for chat
             }
         }
 
         dailyTrackerTab.addEventListener('click', () => showMainTab('dailyTracker'));
         todoListTab.addEventListener('click', () => showMainTab('todoList'));
         tracTab.addEventListener('click', () => showMainTab('trac'));
-        chatTab.addEventListener('click', () => showMainTab('chat')); // New chat tab event listener
+        chatTab.addEventListener('click', () => showMainTab('chat'));
 
-        // --- Daily Tracker Logic (unchanged) ---
+        // --- Daily Tracker Logic ---
         const dailyEntriesDiv = document.getElementById('dailyEntries');
         const saveDailyTrackerButton = document.getElementById('saveDailyTracker');
         const LOCAL_STORAGE_DAILY_KEY = 'dailyTrackerData';
@@ -756,7 +805,7 @@
 
         saveDailyTrackerButton.addEventListener('click', saveDailyTrackerData);
 
-        // --- To-Do List Logic (unchanged) ---
+        // --- To-Do List Logic ---
         const newTodoCategoryInput = document.getElementById('newTodoCategoryInput');
         const addTodoCategoryButton = document.getElementById('addTodoCategoryButton');
         const todoCategoriesListDiv = document.getElementById('todoCategoriesList');
@@ -1061,7 +1110,7 @@
             renderTodoCategories();
         }
 
-        // --- Trac Tab Logic (unchanged) ---
+        // --- Trac Tab Logic ---
         const LOCAL_STORAGE_TRAC_KEY = 'tracData';
         let tracData = {
             bio: [],
@@ -1278,7 +1327,7 @@
         addChemChapterButton.addEventListener('click', () => addTracChapter('chem', newChemChapterInput));
         addPhysChapterButton.addEventListener('click', () => addTracChapter('phys', newPhysChapterInput));
 
-        // --- Chat Logic (New Section) ---
+        // --- Chat Logic (Local Storage) ---
         const groupListDiv = document.getElementById('groupList');
         const newGroupNameInput = document.getElementById('newGroupNameInput');
         const createGroupButton = document.getElementById('createGroupButton');
@@ -1289,100 +1338,108 @@
         const sendMessageButton = document.getElementById('sendMessageButton');
         const currentGroupNameDisplay = document.getElementById('currentGroupName');
 
+        // Helper to get all groups from local storage
+        function getGroupsFromLocalStorage() {
+            const groupsJson = localStorage.getItem('chatGroups');
+            return groupsJson ? JSON.parse(groupsJson) : [];
+        }
+
+        // Helper to save all groups to local storage
+        function saveGroupsToLocalStorage(groups) {
+            localStorage.setItem('chatGroups', JSON.stringify(groups));
+        }
+
+        // Helper to get messages for a specific group from local storage
+        function getMessagesForGroup(groupId) {
+            const messagesJson = localStorage.getItem(`chatMessages_${groupId}`);
+            return messagesJson ? JSON.parse(messagesJson) : [];
+        }
+
+        // Helper to save messages for a specific group to local storage
+        function saveMessagesForGroup(groupId, messages) {
+            localStorage.setItem(`chatMessages_${groupId}`, JSON.stringify(messages));
+        }
+
         // Function to render the list of groups the user is a member of
-        async function renderGroups() {
-            if (!currentUserId) {
-                groupListDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">Please sign in to see groups.</p>`;
+        function renderGroups() {
+            groupListDiv.innerHTML = '';
+            const allGroups = getGroupsFromLocalStorage();
+            const userGroups = allGroups.filter(group => group.members.includes(currentUserId));
+
+            if (userGroups.length === 0) {
+                groupListDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">No groups yet. Create one!</p>`;
                 return;
             }
 
-            groupListDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">Loading groups...</p>`;
-            try {
-                const groupsRef = collection(db, `artifacts/${appId}/public/data/groups`);
-                const q = query(groupsRef, where("members", "array-contains", currentUserId));
-                const querySnapshot = await getDocs(q);
-
-                groupListDiv.innerHTML = ''; // Clear loading message
-
-                if (querySnapshot.empty) {
-                    groupListDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">No groups yet. Create one!</p>`;
-                    return;
-                }
-
-                querySnapshot.forEach((doc) => {
-                    const group = doc.data();
-                    const groupItem = document.createElement('div');
-                    groupItem.className = `group-item ${doc.id === activeGroupId ? 'active-group' : ''}`;
-                    groupItem.dataset.groupId = doc.id;
-                    groupItem.innerHTML = `
-                        <span>${group.name}</span>
-                        <span class="group-members-count">${group.members.length} members</span>
-                    `;
-                    groupItem.addEventListener('click', () => selectGroup(doc.id, group.name));
-                    groupListDiv.appendChild(groupItem);
-                });
-            } catch (error) {
-                console.error("Error fetching groups:", error);
-                groupListDiv.innerHTML = `<p class="text-red-500 text-sm text-center py-2">Error loading groups.</p>`;
-            }
+            userGroups.forEach((group) => {
+                const groupItem = document.createElement('div');
+                groupItem.className = `group-item ${group.id === activeGroupId ? 'active-group' : ''}`;
+                groupItem.dataset.groupId = group.id;
+                groupItem.innerHTML = `
+                    <span>${group.name}</span>
+                    <span class="group-members-count">${group.members.length} members</span>
+                `;
+                groupItem.addEventListener('click', () => selectGroup(group.id, group.name));
+                groupListDiv.appendChild(groupItem);
+            });
         }
 
         // Function to create a new group
-        createGroupButton.addEventListener('click', async () => {
+        createGroupButton.addEventListener('click', () => {
             const groupName = newGroupNameInput.value.trim();
-            if (!groupName || !currentUserId) {
-                alert("Group name cannot be empty and you must be logged in.");
+            if (!groupName) {
+                showAlert("Group name cannot be empty.");
                 return;
             }
 
-            try {
-                const docRef = await addDoc(collection(db, `artifacts/${appId}/public/data/groups`), {
-                    name: groupName,
-                    members: [currentUserId], // Creator is automatically a member
-                    createdAt: new Date(),
-                    createdBy: currentUserId
-                });
-                console.log("Group created with ID:", docRef.id);
-                newGroupNameInput.value = '';
-                renderGroups(); // Re-render group list
-                selectGroup(docRef.id, groupName); // Automatically select the new group
-            } catch (error) {
-                console.error("Error creating group:", error);
-                alert("Failed to create group: " + error.message);
-            }
+            const allGroups = getGroupsFromLocalStorage();
+            const newGroup = {
+                id: Date.now().toString(), // Unique ID for the group
+                name: groupName,
+                members: [currentUserId], // Creator is automatically a member
+                createdAt: new Date().toISOString(),
+                createdBy: currentUserId
+            };
+            allGroups.push(newGroup);
+            saveGroupsToLocalStorage(allGroups);
+
+            console.log("Group created with ID:", newGroup.id);
+            newGroupNameInput.value = '';
+            renderGroups(); // Re-render group list
+            selectGroup(newGroup.id, newGroup.name); // Automatically select the new group
         });
 
         // Function to add a friend to the currently active group
-        addFriendButton.addEventListener('click', async () => {
+        addFriendButton.addEventListener('click', () => {
             const friendId = friendIdInput.value.trim();
             if (!friendId || !activeGroupId) {
-                alert("Please enter a friend's User ID and select a group.");
+                showAlert("Please enter a friend's User ID and select a group.");
                 return;
             }
 
-            try {
-                const groupRef = doc(db, `artifacts/${appId}/public/data/groups`, activeGroupId);
-                await updateDoc(groupRef, {
-                    members: arrayUnion(friendId)
-                });
-                console.log(`Friend ${friendId} added to group ${activeGroupId}`);
-                friendIdInput.value = '';
-                renderGroups(); // Re-render group list to show updated member count
-            } catch (error) {
-                console.error("Error adding friend to group:", error);
-                alert("Failed to add friend: " + error.message);
+            let allGroups = getGroupsFromLocalStorage();
+            const groupIndex = allGroups.findIndex(g => g.id === activeGroupId);
+
+            if (groupIndex > -1) {
+                const group = allGroups[groupIndex];
+                if (!group.members.includes(friendId)) {
+                    group.members.push(friendId);
+                    saveGroupsToLocalStorage(allGroups);
+                    console.log(`Friend ${friendId} added to group ${activeGroupId}`);
+                    friendIdInput.value = '';
+                    renderGroups(); // Re-render group list to show updated member count
+                } else {
+                    showAlert("This user is already a member of this group.");
+                }
+            } else {
+                showAlert("Selected group not found.");
             }
         });
 
         // Function to select a group and load its messages
-        async function selectGroup(groupId, groupName) {
-            if (unsubscribeFromMessages) {
-                unsubscribeFromMessages(); // Unsubscribe from previous group's messages
-            }
-
+        function selectGroup(groupId, groupName) {
             activeGroupId = groupId;
             currentGroupNameDisplay.textContent = `Chatting in: ${groupName}`;
-            chatMessagesDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">Loading messages...</p>`;
             chatMessageInput.disabled = false;
             sendMessageButton.disabled = false;
 
@@ -1392,54 +1449,54 @@
             });
             document.querySelector(`.group-item[data-group-id="${groupId}"]`).classList.add('active-group');
 
-
-            const messagesRef = collection(db, `artifacts/${appId}/public/data/groups/${groupId}/messages`);
-            const q = query(messagesRef, orderBy("timestamp", "asc")); // Order messages by timestamp
-
-            unsubscribeFromMessages = onSnapshot(q, (snapshot) => {
-                chatMessagesDiv.innerHTML = ''; // Clear existing messages
-                if (snapshot.empty) {
-                    chatMessagesDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">No messages in this group yet. Be the first to send one!</p>`;
-                    return;
-                }
-                snapshot.forEach((doc) => {
-                    const message = doc.data();
-                    const messageElement = document.createElement('div');
-                    messageElement.className = `chat-message ${message.senderId === currentUserId ? 'self' : 'other'}`;
-                    messageElement.innerHTML = `
-                        <div class="sender">${message.senderId === currentUserId ? 'You' : message.senderId}</div>
-                        <div class="text">${message.text}</div>
-                        <div class="timestamp">${new Date(message.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                    `;
-                    chatMessagesDiv.appendChild(messageElement);
-                });
-                // Scroll to the bottom of the chat
-                chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
-            }, (error) => {
-                console.error("Error listening to messages:", error);
-                chatMessagesDiv.innerHTML = `<p class="text-red-500 text-sm text-center py-2">Error loading messages.</p>`;
-            });
+            renderMessages(groupId);
         }
 
-        // Function to send a message
-        sendMessageButton.addEventListener('click', async () => {
-            const messageText = chatMessageInput.value.trim();
-            if (!messageText || !activeGroupId || !currentUserId) {
-                alert("Message cannot be empty and a group must be selected.");
+        // Function to render messages for the active group
+        function renderMessages(groupId) {
+            chatMessagesDiv.innerHTML = '';
+            const messages = getMessagesForGroup(groupId);
+
+            if (messages.length === 0) {
+                chatMessagesDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">No messages in this group yet. Be the first to send one!</p>`;
                 return;
             }
 
-            try {
-                await addDoc(collection(db, `artifacts/${appId}/public/data/groups/${activeGroupId}/messages`), {
-                    senderId: currentUserId,
-                    text: messageText,
-                    timestamp: new Date()
-                });
-                chatMessageInput.value = ''; // Clear input field
-            } catch (error) {
-                console.error("Error sending message:", error);
-                alert("Failed to send message: " + error.message);
+            // Sort messages by timestamp (oldest first)
+            messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+            messages.forEach((message) => {
+                const messageElement = document.createElement('div');
+                messageElement.className = `chat-message ${message.senderId === currentUserId ? 'self' : 'other'}`;
+                messageElement.innerHTML = `
+                    <div class="sender">${message.senderId === currentUserId ? 'You' : message.senderId}</div>
+                    <div class="text">${message.text}</div>
+                    <div class="timestamp">${new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                `;
+                chatMessagesDiv.appendChild(messageElement);
+            });
+            // Scroll to the bottom of the chat
+            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+        }
+
+        // Function to send a message
+        sendMessageButton.addEventListener('click', () => {
+            const messageText = chatMessageInput.value.trim();
+            if (!messageText || !activeGroupId) {
+                showAlert("Message cannot be empty and a group must be selected.");
+                return;
             }
+
+            const messages = getMessagesForGroup(activeGroupId);
+            messages.push({
+                senderId: currentUserId,
+                text: messageText,
+                timestamp: new Date().toISOString()
+            });
+            saveMessagesForGroup(activeGroupId, messages);
+
+            chatMessageInput.value = ''; // Clear input field
+            renderMessages(activeGroupId); // Re-render messages to show the new one
         });
 
         // Allow sending message with Enter key
@@ -1462,39 +1519,7 @@
             saveDailyTrackerData();
             saveTodoCategories();
             saveTracData();
-            if (unsubscribeFromMessages) {
-                unsubscribeFromMessages(); // Clean up Firestore listener
-            }
         });
-
-        // Listen for Firebase auth state changes to update currentUserId and render groups
-        // This is already handled in the head script, but adding a listener here for clarity
-        // and to ensure renderGroups is called when currentUserId is available.
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUserId = user.uid;
-                document.getElementById('displayUserId').textContent = `Your User ID: ${user.uid}`;
-                renderGroups(); // Render groups once authenticated
-            } else {
-                currentUserId = null;
-                document.getElementById('displayUserId').textContent = `Your User ID: Not signed in`;
-                groupListDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">Please sign in to see groups.</p>`;
-                currentGroupNameDisplay.textContent = "Select a Group to Chat";
-                chatMessagesDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">No messages yet.</p>`;
-                chatMessageInput.disabled = true;
-                sendMessageButton.disabled = true;
-                if (unsubscribeFromMessages) {
-                    unsubscribeFromMessages();
-                }
-            }
-        });
-
-        // Ensure currentUserId is set if already authenticated on page load
-        if (auth.currentUser) {
-            currentUserId = auth.currentUser.uid;
-            document.getElementById('displayUserId').textContent = `Your User ID: ${currentUserId}`;
-            renderGroups();
-        }
     </script>
 </body>
 </html>
