@@ -3,266 +3,1498 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEET 2026 Daily Study Checklist</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Daily Tracker & To-Do List</title>
+    <!-- Tailwind CSS CDN for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, arrayUnion, arrayRemove, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Firebase variables accessible in the script below
+        window.firebaseApp = initializeApp(JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}'));
+        window.db = getFirestore(window.firebaseApp);
+        window.auth = getAuth(window.firebaseApp);
+
+        // Authenticate user
+        onAuthStateChanged(window.auth, async (user) => {
+            if (user) {
+                console.log("User is signed in:", user.uid);
+                window.currentUserId = user.uid;
+                document.getElementById('displayUserId').textContent = `Your User ID: ${user.uid}`;
+                renderGroups(); // Render groups once authenticated
+            } else {
+                console.log("No user signed in. Attempting anonymous sign-in.");
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(window.auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(window.auth);
+                    }
+                } catch (error) {
+                    console.error("Firebase authentication error:", error);
+                    document.getElementById('displayUserId').textContent = `Authentication Error: ${error.message}`;
+                }
+            }
+        });
+    </script>
     <style>
-        /* Custom font for better readability */
+        /* Custom styles for the app */
         body {
-            font-family: "Inter", sans-serif;
-            background-color: #f0f4f8; /* Light background */
-            color: #333;
+            font-family: 'Inter', sans-serif;
+            background-color: #eff6ff; /* Very light sky blue background */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top for better scrolling */
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
         }
-        /* Styling for the checkbox */
-        input[type="checkbox"] {
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            width: 24px;
-            height: 24px;
-            border: 2px solid #6366f1; /* Indigo 500 */
-            border-radius: 6px; /* Rounded corners */
-            position: relative;
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08); /* Softer shadow */
+            width: 100%;
+            max-width: 900px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .tab-button {
+            padding: 1rem 1.5rem;
+            font-weight: 600;
             cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            color: #6b7280; /* Gray text */
+        }
+        .tab-button.active {
+            color: #3b82f6; /* Sky blue for active tab */
+            border-color: #3b82f6;
+            background-color: #e0f2fe; /* Lighter sky blue background for active tab */
+        }
+        .tab-button:hover:not(.active) {
+            background-color: #f0f9ff; /* Lighter hover background */
+            color: #1f2937;
+        }
+        .tab-content {
+            padding: 2rem;
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        input[type="text"], textarea {
+            border: 1px solid #e0e7eb; /* Lighter border */
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            transition: all 0.2s ease;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+        }
+        input[type="text"]:focus, textarea:focus {
             outline: none;
-            transition: background-color 0.2s, border-color 0.2s;
+            border-color: #3b82f6; /* Sky blue focus */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); /* Focus ring */
         }
-        input[type="checkbox"]:checked {
-            background-color: #6366f1; /* Indigo 500 */
-            border-color: #6366f1; /* Indigo 500 */
+        button {
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
         }
-        input[type="checkbox"]:checked::after {
-            content: '✓';
-            color: white;
-            font-size: 16px;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-weight: bold;
+        .btn-primary {
+            background-color: #3b82f6; /* Sky blue */
+            color: #ffffff;
         }
-        /* Style for the text areas */
-        textarea {
-            resize: vertical; /* Allow vertical resizing */
-            min-height: 40px; /* Minimum height */
-            height: auto; /* Auto height based on content */
-            overflow-y: hidden; /* Hide scrollbar initially */
+        .btn-primary:hover {
+            background-color: #2563eb; /* Darker sky blue */
+        }
+        .btn-secondary {
+            background-color: #9ca3af; /* Gray */
+            color: #ffffff;
+        }
+        .btn-secondary:hover {
+            background-color: #6b7280; /* Darker gray */
+        }
+        .btn-success {
+            background-color: #10b981; /* Emerald */
+            color: #ffffff;
+        }
+        .btn-success:hover {
+            background-color: #059669; /* Darker emerald */
+        }
+        .btn-danger {
+            background-color: #ef4444; /* Red */
+            color: #ffffff;
+        }
+        .btn-danger:hover {
+            background-color: #dc2626; /* Darker red */
+        }
+        .daily-entry {
+            display: flex;
+            align-items: center;
+            space-x-4 p-3 bg-gray-50 rounded-lg shadow-sm;
+            background-color: #f8fafc; /* Very light gray */
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .time-display {
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            background-color: #e0f2fe; /* Light sky blue */
+            transition: background-color 0.2s ease;
+            color: #1f2937;
+        }
+        .time-display:hover {
+            background-color: #bfdbfe; /* Slightly darker */
+        }
+
+        /* Trac Tab Specific Styles */
+        .trac-subject {
+            /* No individual border/shadow for subject sections when using sub-tabs */
+            padding: 0; /* Remove padding as content is handled by sub-tab-content */
+            margin-bottom: 0;
+            background-color: transparent;
+            box-shadow: none;
+        }
+        .trac-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            border-radius: 8px; /* Rounded corners for the table */
+            overflow: hidden; /* Ensures rounded corners apply to content */
+            border: 1px solid #e0e7eb; /* Add border to the table itself */
+        }
+        .trac-table th, .trac-table td {
+            border: 1px solid #e0e7eb;
+            padding: 0.75rem;
+            text-align: left;
+        }
+        .trac-table th {
+            background-color: #e0f2fe; /* Light sky blue */
+            font-weight: 600;
+            color: #3b82f6; /* Sky blue */
+        }
+        .trac-table td {
+            background-color: #ffffff;
+            color: #374151;
+        }
+        .trac-table tr:nth-child(even) td {
+            background-color: #fbfdff; /* Very light blue tint */
+        }
+        .trac-table input[type="checkbox"] {
+            transform: scale(1.2);
+            margin: 0 auto;
+            display: block;
+            accent-color: #3b82f6; /* Sky blue checkbox */
+        }
+
+        /* Sub-tab styles for Trac */
+        .sub-tab-button {
+            padding: 0.75rem 1.25rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+            color: #4b5563;
+        }
+        .sub-tab-button.active {
+            color: #3b82f6;
+            border-color: #3b82f6;
+            background-color: #e0f2fe;
+            border-radius: 6px 6px 0 0;
+        }
+        .sub-tab-button:hover:not(.active) {
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+        .sub-tab-content {
+            padding-top: 1.5rem;
+            display: none;
+            background-color: #f8fafc; /* Consistent background for content */
+            border-radius: 0 0 12px 12px; /* Rounded bottom corners */
+            padding: 1.5rem; /* Padding for the content inside */
+            border: 1px solid #e0e7eb;
+            border-top: none; /* No top border as it connects to tab bar */
+        }
+        .sub-tab-content.active {
+            display: block;
+        }
+
+        /* To-Do List Styles (from previous iteration - kept for other tabs) */
+        .todo-category-item {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            border: 1px solid #e0e7eb;
+        }
+        .todo-category-header {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            background-color: #f8fafc;
+            border-bottom: 1px solid #e5e7eb;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        .todo-category-header .play-icon-wrapper {
+            background-color: #dcfce7;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 0.75rem;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .todo-category-header .play-icon {
+            color: #22c55e;
+            width: 16px;
+            height: 16px;
+        }
+        .todo-category-header .category-name {
+            flex-grow: 1;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #374151;
+        }
+        .todo-category-header .timer-display {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #374151;
+            margin-right: 1rem;
+            flex-shrink: 0;
+        }
+        .todo-category-header .action-icons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .todo-category-header .action-icons svg {
+            cursor: pointer;
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            color: #9ca3af;
+        }
+        .todo-category-header .action-icons svg:hover {
+            color: #6b7280;
+        }
+
+        .todo-subtasks-list {
+            padding: 0.5rem 1.5rem 1rem;
+        }
+        .todo-subtask-item {
+            display: flex;
+            align-items: center;
+            padding: 0.4rem 0;
+            color: #6b7280;
+            font-size: 0.95rem;
+            margin-left: 2.5rem;
+        }
+        .todo-subtask-item input[type="checkbox"] {
+            margin-right: 0.75rem;
+            transform: scale(1.1);
+            accent-color: #3b82f6;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        .todo-subtask-item.completed {
+            color: #9ca3af;
+            text-decoration: line-through;
+        }
+        .todo-subtask-item.completed input[type="checkbox"] {
+            opacity: 0.7;
+        }
+        .todo-subtask-item .subtask-text {
+            flex-grow: 1;
+        }
+        .todo-subtask-item .delete-subtask-btn {
+            background-color: transparent;
+            color: #ef4444;
+            border: none;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            margin-left: 0.5rem;
+        }
+        .todo-subtask-item:hover .delete-subtask-btn {
+            opacity: 1;
+        }
+        .add-subtask-form {
+            display: flex;
+            margin-top: 0.5rem;
+            padding: 0 1.5rem 1rem;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 1rem;
+        }
+        .add-subtask-form input {
+            flex-grow: 1;
+            margin-right: 0.75rem;
+            font-size: 0.9rem;
+            padding: 0.6rem 0.8rem;
+        }
+        .add-subtask-form button {
+            padding: 0.6rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        /* Chat Tab Specific Styles */
+        .chat-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .chat-messages {
+            border: 1px solid #e0e7eb;
+            border-radius: 8px;
+            padding: 1rem;
+            height: 300px;
+            overflow-y: auto;
+            background-color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .chat-message {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        .chat-message.self {
+            background-color: #dbeafe; /* Light blue for self messages */
+            align-self: flex-end;
+        }
+        .chat-message.other {
+            background-color: #e5e7eb; /* Light gray for other messages */
+            align-self: flex-start;
+        }
+        .chat-message .sender {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #4b5563;
+            margin-bottom: 0.25rem;
+        }
+        .chat-message .text {
+            font-size: 0.95rem;
+            color: #1f2937;
+        }
+        .chat-message .timestamp {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            text-align: right;
+            margin-top: 0.25rem;
+        }
+        .group-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .group-item {
+            padding: 0.75rem 1rem;
+            background-color: #f0f9ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .group-item:hover {
+            background-color: #e0f2fe;
+        }
+        .group-item.active-group {
+            background-color: #3b82f6;
+            color: #ffffff;
+            border-color: #2563eb;
+        }
+        .group-item.active-group .group-members-count {
+            color: #e0f2fe;
+        }
+        .group-members-count {
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 8px;
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            }
+            .tab-button {
+                padding: 0.75rem 1rem;
+                font-size: 0.9rem;
+            }
+            .tab-content {
+                padding: 1.5rem;
+            }
+            .daily-entry {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .daily-entry .time-display {
+                margin-bottom: 0.5rem;
+            }
+            .trac-table th, .trac-table td {
+                padding: 0.5rem;
+            }
+            .trac-table th:nth-child(1), .trac-table td:nth-child(1) {
+                width: 20%; /* Adjusted width for even more columns */
+            }
+            .trac-table th:not(:nth-child(1)), .trac-table td:not(:nth-child(1)) {
+                width: 6%; /* Even smaller width for many checkboxes */
+                text-align: center;
+            }
+            .sub-tab-button {
+                padding: 0.6rem 0.8rem;
+                font-size: 0.85rem;
+            }
+            .todo-category-header {
+                flex-wrap: wrap;
+                padding: 0.75rem 1rem;
+            }
+            .todo-category-header .category-name {
+                width: 100%;
+                margin-bottom: 0.5rem;
+                font-size: 1rem;
+            }
+            .todo-category-header .play-icon-wrapper {
+                width: 28px;
+                height: 28px;
+            }
+            .todo-category-header .play-icon {
+                width: 14px;
+                height: 14px;
+            }
+            .todo-category-header .timer-display,
+            .todo-category-header .action-icons {
+                margin-right: 0.5rem;
+                font-size: 0.9rem;
+            }
+            .todo-subtasks-list {
+                padding: 0.75rem 1rem;
+            }
+            .todo-subtask-item {
+                margin-left: 2rem; /* Adjust indent for mobile */
+            }
+            .add-subtask-form {
+                padding: 0 1rem 0.75rem;
+            }
+            .chat-messages {
+                height: 200px; /* Smaller height for mobile */
+            }
         }
     </style>
 </head>
-<body class="p-4 sm:p-6 md:p-8 lg:p-10 bg-gray-100 min-h-screen flex items-center justify-center">
-    <div class="container mx-auto bg-white shadow-lg rounded-xl p-6 sm:p-8 md:p-10 max-w-4xl w-full">
-        <h1 class="text-3xl sm:text-4xl font-bold text-center text-indigo-700 mb-8">Your Daily NEET 2026 Study Checklist</h1>
+<body class="antialiased">
+    <div class="container">
+        <!-- Tab Navigation -->
+        <div class="flex border-b border-gray-200 bg-gray-50 rounded-t-lg">
+            <button id="dailyTrackerTab" class="tab-button active flex-1 text-center">Daily Tracker</button>
+            <button id="todoListTab" class="tab-button flex-1 text-center">To-Do List</button>
+            <button id="tracTab" class="tab-button flex-1 text-center">Trac</button>
+            <button id="chatTab" class="tab-button flex-1 text-center">Chat</button> <!-- New Chat Tab -->
+        </div>
 
-        <!-- Removed loadingApp div as there's no async loading -->
+        <!-- Daily Tracker Content -->
+        <div id="dailyTrackerContent" class="tab-content active">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Daily Happenings</h2>
+            <div id="dailyEntries" class="space-y-4">
+                <!-- Daily entries will be generated here by JavaScript -->
+            </div>
+            <button id="saveDailyTracker" class="btn-primary mt-8 w-full">Save Daily Happenings</button>
+        </div>
 
-        <div id="appContent">
-            <!-- Removed User ID display as Firebase is removed -->
+        <!-- To-Do List Content -->
+        <div id="todoListContent" class="tab-content">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">My To-Do List</h2>
+            <div class="flex mb-6 space-x-3">
+                <input type="text" id="newTodoCategoryInput" placeholder="Add a new main task..." class="flex-1">
+                <button id="addTodoCategoryButton" class="btn-primary">Add Task</button>
+            </div>
+            <div id="todoCategoriesList" class="space-y-6">
+                <!-- To-Do categories and sub-tasks will be generated here by JavaScript -->
+            </div>
+        </div>
 
-            <div class="mb-10">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-4 border-b-2 border-indigo-300 pb-2">Daily Study Tasks</h2>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 rounded-lg overflow-hidden">
-                        <thead class="bg-indigo-100">
-                            <tr>
-                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider rounded-tl-lg">Category</th>
-                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider">Task Description</th>
-                                <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-indigo-700 uppercase tracking-wider">Status</th>
-                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider rounded-tr-lg">Notes / Topics Covered</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200" id="studyTasksTableBody">
-                            <!-- Physics -->
-                            <tr data-task-id="physics-lec-notes">
-                                <td class="px-3 py-4 whitespace-nowrap font-semibold text-indigo-600">Physics</td>
-                                <td class="px-3 py-4">1. Attend Lecture & Make Notes</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                    <!-- Removed Explain/Summarize button -->
-                                </td>
-                            </tr>
-                            <tr data-task-id="physics-revise-class-qs">
-                                <td class="px-3 py-4 whitespace-nowrap"></td>
-                                <td class="px-3 py-4">2. Self-Study: Revise Notes & Re-practice Class Questions</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                </td>
-                            </tr>
-                            <tr data-task-id="physics-dpp-module">
-                                <td class="px-3 py-4 whitespace-nowrap"></td>
-                                <td class="px-3 py-4">3. Complete DPP & Module Questions</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                </td>
-                            </tr>
-                            <tr data-task-id="physics-kpp-extra-book">
-                                <td class="px-3 py-4 whitespace-nowrap"></td>
-                                <td class="px-3 py-4">4. Solve KPP & Extra Book Questions</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                </td>
-                            </tr>
-                            <tr data-task-id="physics-mahamanthan-hcv">
-                                <td class="px-3 py-4 whitespace-nowrap"></td>
-                                <td class="px-3 py-4">5. MahaManthan Assignment (if given) & HCV Lookup</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                </td>
-                            </tr>
+        <!-- Trac Tab Content -->
+        <div id="tracContent" class="tab-content">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">My Study Tracker</h2>
 
-                            <!-- Chemistry -->
-                            <tr data-task-id="chemistry-lec-notes">
-                                <td class="px-3 py-4 whitespace-nowrap font-semibold text-indigo-600">Chemistry</td>
-                                <td class="px-3 py-4">1. Attend Lecture & Make Notes</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                </td>
-                            </tr>
-                            <tr data-task-id="chemistry-revise-ncert-class-qs">
-                                <td class="px-3 py-4 whitespace-nowrap"></td>
-                                <td class="px-3 py-4">2. Self-Study: Revise Notes, Read NCERT & Re-practice Class Questions</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                </td>
-                            </tr>
-                            <tr data-task-id="chemistry-dpp-module">
-                                <td class="px-3 py-4 whitespace-nowrap"></td>
-                                <td class="px-3 py-4">3. Complete DPP & Module Questions</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                </td>
-                            </tr>
-                            <tr data-task-id="chemistry-extra-book">
-                                <td class="px-3 py-4 whitespace-nowrap"></td>
-                                <td class="px-3 py-4">4. Solve Extra Book Questions</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                </td>
-                            </tr>
-                            <tr data-task-id="chemistry-high-level-qs">
-                                <td class="px-3 py-4 whitespace-nowrap"></td>
-                                <td class="px-3 py-4">5. Attempt 2-3 High-Level Questions</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                </td>
-                            </tr>
+            <!-- Sub-tab Navigation for Trac -->
+            <div class="flex border-b border-gray-200 mb-6">
+                <button id="tracBioSubTab" class="sub-tab-button active flex-1 text-center">Biology</button>
+                <button id="tracChemSubTab" class="sub-tab-button flex-1 text-center">Chemistry</button>
+                <button id="tracPhysSubTab" class="sub-tab-button flex-1 text-center">Physics</button>
+            </div>
 
-                            <!-- Biology -->
-                            <tr data-task-id="biology-lec-notes">
-                                <td class="px-3 py-4 whitespace-nowrap font-semibold text-indigo-600">Biology</td>
-                                <td class="px-3 py-4">1. Attend Lecture & Make Notes</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                </td>
-                            </tr>
-                            <tr data-task-id="biology-revise-ncert-class-qs">
-                                <td class="px-3 py-4 whitespace-nowrap"></td>
-                                <td class="px-3 py-4">2. Self-Study: Revise Notes, Read NCERT & Re-practice Class Questions</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                </td>
-                            </tr>
-                            <tr data-task-id="biology-dpp-module">
-                                <td class="px-3 py-4 whitespace-nowrap"></td>
-                                <td class="px-3 py-4">3. Complete DPP & Module Questions</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                </td>
-                            </tr>
-                            <tr data-task-id="biology-extra-book">
-                                <td class="px-3 py-4 whitespace-nowrap"></td>
-                                <td class="px-3 py-4">4. Solve Extra Book Questions</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                </td>
-                            </tr>
-                            <tr data-task-id="biology-ncert-word-to-word">
-                                <td class="px-3 py-4 whitespace-nowrap"></td>
-                                <td class="px-3 py-4">5. Practice NCERT Word-to-Word / Line-to-Line Questions</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes"></textarea>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+            <!-- Biology Sub-tab Content -->
+            <div id="tracBioContent" class="sub-tab-content active trac-subject">
+                <div class="flex mb-4 space-x-3">
+                    <input type="text" id="newBioChapterInput" placeholder="Add Biology Chapter Name..." class="flex-1">
+                    <button id="addBioChapterButton" class="btn-primary">Add Chapter</button>
+                </div>
+                <div id="bioChapters">
+                    <!-- Biology chapters will be rendered here -->
                 </div>
             </div>
 
-            <div>
-                <h2 class="text-2xl font-semibold text-gray-800 mb-4 border-b-2 border-indigo-300 pb-2">End of Day Activities</h2>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 rounded-lg overflow-hidden">
-                        <thead class="bg-indigo-100">
-                            <tr>
-                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider rounded-tl-lg">Category</th>
-                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider">Task Description</th>
-                                <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-indigo-700 uppercase tracking-wider">Status</th>
-                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider rounded-tr-lg">Notes / Reflection</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200" id="endOfDayTasksTableBody">
-                            <tr data-task-id="self-test">
-                                <td class="px-3 py-4 whitespace-nowrap font-semibold text-indigo-600">Self-Test</td>
-                                <td class="px-3 py-4">9:00 PM - 10:00 PM: Take a small test on previous day's topics</td>
-                                <td class="px-3 py-4 text-center"><input type="checkbox" class="task-checkbox rounded-md"></td>
-                                <td class="px-3 py-4">
-                                    <textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 topic-input" data-field="notes" placeholder="Topics tested:"></textarea>
-                                </td>
-                            </tr>
-                            <tr data-task-id="sum-up-prouds">
-                                <td class="px-3 py-4 whitespace-nowrap font-semibold text-indigo-600">Daily Sum-Up</td>
-                                <td class="px-3 py-4">Prouds:</td>
-                                <td class="px-3 py-4 text-center"></td>
-                                <td class="px-3 py-4"><textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500" data-field="notes" rows="3"></textarea></td>
-                            </tr>
-                            <tr data-task-id="sum-up-regrets">
-                                <td class="px-3 py-4 whitespace-nowrap"></td>
-                                <td class="px-3 py-4">Regrets:</td>
-                                <td class="px-3 py-4 text-center"></td>
-                                <td class="px-3 py-4"><textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500" data-field="notes" rows="3"></textarea></td>
-                            </tr>
-                            <tr data-task-id="sum-up-improvement">
-                                <td class="px-3 py-4 whitespace-nowrap"></td>
-                                <td class="px-3 py-4">Improvement Needed?:</td>
-                                <td class="px-3 py-4 text-center"></td>
-                                <td class="px-3 py-4"><textarea class="w-full border rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500" data-field="notes" rows="3"></textarea></td>
-                            </tr>
-                        </tbody>
-                    </table>
+            <!-- Chemistry Sub-tab Content -->
+            <div id="tracChemContent" class="sub-tab-content trac-subject">
+                <div class="flex mb-4 space-x-3">
+                    <input type="text" id="newChemChapterInput" placeholder="Add Chemistry Chapter Name..." class="flex-1">
+                    <button id="addChemChapterButton" class="btn-primary">Add Chapter</button>
+                </div>
+                <div id="chemChapters">
+                    <!-- Chemistry chapters will be rendered here -->
                 </div>
             </div>
 
-            <p class="text-center text-gray-600 text-sm mt-8">
-                **How to use the Status column:** Click the checkbox next to each task to mark it as completed (✓) or uncompleted (empty).
-            </p>
+            <!-- Physics Sub-tab Content -->
+            <div id="tracPhysContent" class="sub-tab-content trac-subject">
+                <div class="flex mb-4 space-x-3">
+                    <input type="text" id="newPhysChapterInput" placeholder="Add Physics Chapter Name..." class="flex-1">
+                    <button id="addPhysChapterButton" class="btn-primary">Add Chapter</button>
+                </div>
+                <div id="physChapters">
+                    <!-- Physics chapters will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Content -->
+        <div id="chatContent" class="tab-content">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Group Chat</h2>
+
+            <div class="mb-4 p-3 bg-blue-50 rounded-lg text-blue-800">
+                <p id="displayUserId" class="font-medium">Your User ID: Loading...</p>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-6">
+                <!-- Group Management Section -->
+                <div class="w-full md:w-1/3 flex flex-col gap-4">
+                    <h3 class="text-xl font-semibold text-gray-700">My Groups</h3>
+                    <div id="groupList" class="group-list flex-1 border border-gray-200 rounded-lg p-2 overflow-y-auto max-h-48">
+                        <p class="text-gray-500 text-sm text-center py-2">No groups yet.</p>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <input type="text" id="newGroupNameInput" placeholder="New group name..." class="w-full">
+                        <button id="createGroupButton" class="btn-primary w-full">Create Group</button>
+                    </div>
+
+                    <div class="flex flex-col gap-2 border-t border-gray-200 pt-4 mt-4">
+                        <h4 class="text-lg font-semibold text-gray-700">Add Friend to Current Group</h4>
+                        <input type="text" id="friendIdInput" placeholder="Friend's User ID..." class="w-full">
+                        <button id="addFriendButton" class="btn-secondary w-full">Add Friend</button>
+                    </div>
+                </div>
+
+                <!-- Chat Display Section -->
+                <div class="w-full md:w-2/3 flex flex-col gap-4">
+                    <h3 class="text-xl font-semibold text-gray-700" id="currentGroupName">Select a Group to Chat</h3>
+                    <div id="chatMessages" class="chat-messages flex-1">
+                        <p class="text-gray-500 text-sm text-center py-2">No messages yet.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="chatMessageInput" placeholder="Type your message..." class="flex-1" disabled>
+                        <button id="sendMessageButton" class="btn-primary" disabled>Send</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Removed Modal Structure for explanations -->
+    <script type="module">
+        // Import Firebase modules (already imported globally via script type="module" in head)
+        // This block is for reference to show which functions are used.
+        // const { initializeApp } = window.firebase; // Not needed, already global
+        // const { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } = window.firebase; // Not needed
+        // const { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, arrayUnion, arrayRemove, getDocs } = window.firebase; // Not needed
 
-    <script>
-        // Auto-resize textareas based on content
-        document.querySelectorAll('textarea').forEach(textarea => {
-            textarea.addEventListener('input', () => {
-                textarea.style.height = 'auto';
-                textarea.style.height = (textarea.scrollHeight) + 'px';
+        // Global Firebase variables (set in the head script)
+        const db = window.db;
+        const auth = window.auth;
+        let currentUserId = window.currentUserId; // Will be set by onAuthStateChanged
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        let activeGroupId = null;
+        let unsubscribeFromMessages = null; // To manage real-time listener
+
+        // --- Main Tab Switching Logic ---
+        const dailyTrackerTab = document.getElementById('dailyTrackerTab');
+        const todoListTab = document.getElementById('todoListTab');
+        const tracTab = document.getElementById('tracTab');
+        const chatTab = document.getElementById('chatTab'); // New chat tab
+        const dailyTrackerContent = document.getElementById('dailyTrackerContent');
+        const todoListContent = document.getElementById('todoListContent');
+        const tracContent = document.getElementById('tracContent');
+        const chatContent = document.getElementById('chatContent'); // New chat content
+
+        function showMainTab(tabId) {
+            // Remove 'active' class from all main tabs and content
+            dailyTrackerTab.classList.remove('active');
+            todoListTab.classList.remove('active');
+            tracTab.classList.remove('active');
+            chatTab.classList.remove('active'); // New
+            dailyTrackerContent.classList.remove('active');
+            todoListContent.classList.remove('active');
+            tracContent.classList.remove('active');
+            chatContent.classList.remove('active'); // New
+
+            // Add 'active' class to the selected main tab and content
+            if (tabId === 'dailyTracker') {
+                dailyTrackerTab.classList.add('active');
+                dailyTrackerContent.classList.add('active');
+            } else if (tabId === 'todoList') {
+                todoListTab.classList.add('active');
+                todoListContent.classList.add('active');
+                renderTodoCategories(); // Re-render To-Do list when tab is active
+            } else if (tabId === 'trac') {
+                tracTab.classList.add('active');
+                tracContent.classList.add('active');
+                showTracSubTab('bio'); // Default to Biology sub-tab
+            } else if (tabId === 'chat') { // New chat tab logic
+                chatTab.classList.add('active');
+                chatContent.classList.add('active');
+                if (currentUserId) { // Only render groups if authenticated
+                    renderGroups();
+                }
+            }
+        }
+
+        dailyTrackerTab.addEventListener('click', () => showMainTab('dailyTracker'));
+        todoListTab.addEventListener('click', () => showMainTab('todoList'));
+        tracTab.addEventListener('click', () => showMainTab('trac'));
+        chatTab.addEventListener('click', () => showMainTab('chat')); // New chat tab event listener
+
+        // --- Daily Tracker Logic (unchanged) ---
+        const dailyEntriesDiv = document.getElementById('dailyEntries');
+        const saveDailyTrackerButton = document.getElementById('saveDailyTracker');
+        const LOCAL_STORAGE_DAILY_KEY = 'dailyTrackerData';
+        const LOCAL_STORAGE_DAILY_RESET_DATE_KEY = 'lastDailyTrackerResetDate';
+
+        function checkAndResetDailyTracker() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const lastResetDateStr = localStorage.getItem(LOCAL_STORAGE_DAILY_RESET_DATE_KEY);
+            let lastResetDate = null;
+
+            if (lastResetDateStr) {
+                lastResetDate = new Date(lastResetDateStr);
+                lastResetDate.setHours(0, 0, 0, 0);
+            }
+
+            if (!lastResetDate || today.getTime() > lastResetDate.getTime()) {
+                localStorage.removeItem(LOCAL_STORAGE_DAILY_KEY);
+                localStorage.setItem(LOCAL_STORAGE_DAILY_RESET_DATE_KEY, today.toDateString());
+                console.log('Daily Tracker reset for a new day.');
+            }
+            initializeDailyTracker();
+        }
+
+        function initializeDailyTracker() {
+            dailyEntriesDiv.innerHTML = '';
+            const savedData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_DAILY_KEY)) || {};
+
+            for (let i = 5; i <= 24; i++) {
+                const hour = i === 24 ? 0 : i;
+                const displayHour = hour === 0 ? '12 AM' : (hour > 12 ? `${hour - 12} PM` : `${hour} AM`);
+                const key = `hour-${i}`;
+
+                const entryData = savedData[key] || { time: displayHour, activity: '' };
+
+                const dailyEntry = document.createElement('div');
+                dailyEntry.className = 'daily-entry flex items-center space-x-4';
+                dailyEntry.dataset.key = key;
+
+                const timeSpan = document.createElement('span');
+                timeSpan.className = 'time-display text-gray-700 font-medium whitespace-nowrap';
+                timeSpan.textContent = entryData.time;
+                timeSpan.contentEditable = true;
+                timeSpan.title = 'Click to edit time';
+
+                const activityInput = document.createElement('input');
+                activityInput.type = 'text';
+                activityInput.className = 'flex-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500';
+                activityInput.placeholder = `What happened at ${entryData.time}?`;
+                activityInput.value = entryData.activity;
+
+                dailyEntry.appendChild(timeSpan);
+                dailyEntry.appendChild(activityInput);
+                dailyEntriesDiv.appendChild(dailyEntry);
+
+                timeSpan.addEventListener('input', saveDailyTrackerData);
+                activityInput.addEventListener('input', saveDailyTrackerData);
+            }
+        }
+
+        function saveDailyTrackerData() {
+            const dataToSave = {};
+            document.querySelectorAll('.daily-entry').forEach(entryDiv => {
+                const key = entryDiv.dataset.key;
+                const time = entryDiv.querySelector('.time-display').textContent.trim();
+                const activity = entryDiv.querySelector('input[type="text"]').value.trim();
+                dataToSave[key] = { time, activity };
             });
+            localStorage.setItem(LOCAL_STORAGE_DAILY_KEY, JSON.stringify(dataToSave));
+            console.log('Daily tracker data saved locally.');
+        }
+
+        saveDailyTrackerButton.addEventListener('click', saveDailyTrackerData);
+
+        // --- To-Do List Logic (unchanged) ---
+        const newTodoCategoryInput = document.getElementById('newTodoCategoryInput');
+        const addTodoCategoryButton = document.getElementById('addTodoCategoryButton');
+        const todoCategoriesListDiv = document.getElementById('todoCategoriesList');
+        const LOCAL_STORAGE_TODO_KEY = 'todoListData';
+        let todoCategories = [];
+
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            return [hours, minutes, seconds]
+                .map(unit => String(unit).padStart(2, '0'))
+                .join(':');
+        }
+
+        function loadTodoCategories() {
+            const storedData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_TODO_KEY));
+            if (storedData) {
+                todoCategories = storedData;
+                todoCategories.forEach(category => {
+                    if (category.isRunning) {
+                        startCategoryTimer(category.id);
+                    }
+                });
+            }
+        }
+
+        function saveTodoCategories() {
+            todoCategories.forEach(category => {
+                if (category.isRunning) {
+                    category.elapsedTime += (Date.now() - category.startTime);
+                    category.startTime = Date.now();
+                }
+            });
+            localStorage.setItem(LOCAL_STORAGE_TODO_KEY, JSON.stringify(todoCategories));
+            console.log('To-Do list data saved locally.');
+        }
+
+        function renderTodoCategories() {
+            todoCategoriesListDiv.innerHTML = '';
+
+            if (todoCategories.length === 0) {
+                todoCategoriesListDiv.innerHTML = `<p class="text-gray-500 text-center py-4">No task categories added yet. Add one above!</p>`;
+                return;
+            }
+
+            todoCategories.forEach(category => {
+                const categoryItem = document.createElement('div');
+                categoryItem.className = 'todo-category-item';
+                categoryItem.dataset.categoryId = category.id;
+
+                const categoryHeader = document.createElement('div');
+                categoryHeader.className = 'todo-category-header';
+
+                const playIconWrapper = document.createElement('div');
+                playIconWrapper.className = 'play-icon-wrapper';
+                const playIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                playIcon.setAttribute("viewBox", "0 0 24 24");
+                playIcon.setAttribute("fill", "currentColor");
+                playIcon.className = "play-icon";
+                playIcon.innerHTML = category.isRunning ? `
+                    <path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 0 1 .75-.75H9a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H7.5a.75.75 0 0 1-.75-.75V5.25Zm7.5 0a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75V5.25Z" clip-rule="evenodd" />
+                ` : `
+                    <path d="M5.25 5.653c0-.856.917-1.36 1.66-1.002l11.26 5.63a1.5 1.5 0 0 1 0 2.694l-11.26 5.63C6.167 20.363 5.25 19.859 5.25 19.003V5.653Z" />
+                `;
+                playIconWrapper.appendChild(playIcon);
+                playIconWrapper.addEventListener('click', () => toggleCategoryTimer(category.id));
+
+
+                const categoryName = document.createElement('span');
+                categoryName.className = 'category-name';
+                categoryName.textContent = category.name;
+
+                const timerDisplay = document.createElement('span');
+                timerDisplay.className = 'timer-display';
+                timerDisplay.textContent = formatTime(category.elapsedTime);
+
+                const actionIconsDiv = document.createElement('div');
+                actionIconsDiv.className = 'action-icons';
+
+                const resetIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                resetIcon.setAttribute("viewBox", "0 0 24 24");
+                resetIcon.setAttribute("fill", "currentColor");
+                resetIcon.className = "reset-icon";
+                resetIcon.innerHTML = `
+                    <path fill-rule="evenodd" d="M16.03 4.47A.75.75 0 0 1 18 5.25v1.5a.75.75 0 0 1-1.5 0V5.922l-3.03 3.03a.75.75 0 1 1-1.06-1.06l3.03-3.03H16.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
+                    <path fill-rule="evenodd" d="M8.47 19.53a.75.75 0 0 1 0-1.06l3.03-3.03H7.5a.75.75 0 0 1-.75-.75v-1.5a.75.75 0 0 1 1.5 0v.828l3.03-3.03a.75.75 0 1 1 1.06 1.06l-3.03 3.03H16.5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-.828l-3.03 3.03a.75.75 0 0 1-1.06 0Z" clip-rule="evenodd" />
+                `;
+                resetIcon.addEventListener('click', () => resetCategoryTimer(category.id));
+
+
+                const editIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                editIcon.setAttribute("viewBox", "0 0 24 24");
+                editIcon.setAttribute("fill", "currentColor");
+                editIcon.className = "edit-icon";
+                editIcon.innerHTML = `
+                    <path d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14.25v4.75a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4.75" />
+                `;
+                editIcon.addEventListener('click', () => {
+                    console.log('Edit icon clicked for category:', category.name);
+                });
+
+                const deleteIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                deleteIcon.setAttribute("viewBox", "0 0 24 24");
+                deleteIcon.setAttribute("fill", "currentColor");
+                deleteIcon.className = "delete-icon";
+                deleteIcon.innerHTML = `
+                    <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 0 1 .5.715V18a.75.75 0 0 1-.75.75H5.625a.75.75 0 0 1-.75-.75V5.922a.75.75 0 0 1 .5-.715 48.815 48.815 0 0 1 3.878-.512V4.478c0-.414.336-.75.75-.75h3c.414 0 .75.336.75.75ZM9 6.75A.75.75 0 0 1 9.75 6h4.5a.75.75 0 0 1 .75.75v.75h-6V6.75ZM9 10.5a.75.75 0 0 1 .75-.75h.008v.008H9.75a.75.75 0 0 1-.75-.75ZM11.25 10.5a.75.75 0 0 1 .75-.75h.008v.008H11.25a.75.75 0 0 1-.75-.75ZM13.5 10.5a.75.75 0 0 1 .75-.75h.008v.008H13.5a.75.75 0 0 1-.75-.75ZM10.5 14.25a.75.75 0 0 1 .75-.75h.008v.008H10.5a.75.75 0 0 1-.75-.75ZM12.75 14.25a.75.75 0 0 1 .75-.75h.008v.008H12.75a.75.75 0 0 1-.75-.75ZM15 14.25a.75.75 0 0 1 .75-.75h.008v.008H15a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" />
+                `;
+                deleteIcon.addEventListener('click', () => deleteTodoCategory(category.id));
+
+                actionIconsDiv.appendChild(resetIcon);
+                actionIconsDiv.appendChild(editIcon);
+                actionIconsDiv.appendChild(deleteIcon);
+
+                categoryHeader.appendChild(playIconWrapper);
+                categoryHeader.appendChild(categoryName);
+                categoryHeader.appendChild(timerDisplay);
+                categoryHeader.appendChild(actionIconsDiv);
+
+                const subtasksList = document.createElement('div');
+                subtasksList.className = 'todo-subtasks-list';
+
+                if (category.subTasks.length === 0) {
+                    const noSubtasks = document.createElement('p');
+                    noSubtasks.className = 'text-gray-500 text-sm text-center py-2';
+                    noSubtasks.textContent = 'No sub-tasks yet.';
+                    subtasksList.appendChild(noSubtasks);
+                } else {
+                    category.subTasks.forEach(subTask => {
+                        const subTaskItem = document.createElement('div');
+                        subTaskItem.className = `todo-subtask-item ${subTask.completed ? 'completed' : ''}`;
+                        subTaskItem.dataset.subTaskId = subTask.id;
+
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.checked = subTask.completed;
+                        checkbox.addEventListener('change', () => toggleSubTaskComplete(category.id, subTask.id));
+
+                        const subTaskText = document.createElement('span');
+                        subTaskText.className = 'subtask-text';
+                        subTaskText.textContent = subTask.text;
+
+                        const deleteSubTaskBtn = document.createElement('button');
+                        deleteSubTaskBtn.className = 'delete-subtask-btn';
+                        deleteSubTaskBtn.textContent = 'x';
+                        deleteSubTaskBtn.addEventListener('click', () => deleteSubTask(category.id, subTask.id));
+
+                        subTaskItem.appendChild(checkbox);
+                        subTaskItem.appendChild(subTaskText);
+                        subTaskItem.appendChild(deleteSubTaskBtn);
+                        subtasksList.appendChild(subTaskItem);
+                    });
+                }
+
+                const addSubTaskForm = document.createElement('div');
+                addSubTaskForm.className = 'add-subtask-form';
+                const subTaskInput = document.createElement('input');
+                subTaskInput.type = 'text';
+                subTaskInput.placeholder = 'Add a sub-task...';
+                subTaskInput.className = 'flex-1';
+                const addSubTaskBtn = document.createElement('button');
+                addSubTaskBtn.className = 'btn-primary text-sm px-3 py-1';
+                addSubTaskBtn.textContent = 'Add';
+                addSubTaskBtn.addEventListener('click', () => addSubTask(category.id, subTaskInput));
+
+                addSubTaskForm.appendChild(subTaskInput);
+                addSubTaskForm.appendChild(addSubTaskBtn);
+
+
+                categoryItem.appendChild(categoryHeader);
+                categoryItem.appendChild(subtasksList);
+                categoryItem.appendChild(addSubTaskForm);
+                todoCategoriesListDiv.appendChild(categoryItem);
+            });
+        }
+
+        addTodoCategoryButton.addEventListener('click', () => {
+            const categoryName = newTodoCategoryInput.value.trim();
+            if (categoryName) {
+                const newCategory = {
+                    id: Date.now(),
+                    name: categoryName,
+                    elapsedTime: 0,
+                    startTime: null,
+                    isRunning: false,
+                    intervalId: null,
+                    subTasks: []
+                };
+                todoCategories.push(newCategory);
+                newTodoCategoryInput.value = '';
+                saveTodoCategories();
+                renderTodoCategories();
+            }
         });
+
+        function addSubTask(categoryId, inputElement) {
+            const subTaskText = inputElement.value.trim();
+            if (subTaskText) {
+                const category = todoCategories.find(cat => cat.id === categoryId);
+                if (category) {
+                    category.subTasks.push({
+                        id: Date.now(),
+                        text: subTaskText,
+                        completed: false
+                    });
+                    inputElement.value = '';
+                    saveTodoCategories();
+                    renderTodoCategories();
+                }
+            }
+        }
+
+        function toggleCategoryTimer(categoryId) {
+            const category = todoCategories.find(cat => cat.id === categoryId);
+            if (!category) return;
+
+            if (category.isRunning) {
+                stopCategoryTimer(categoryId);
+            } else {
+                startCategoryTimer(categoryId);
+            }
+            saveTodoCategories();
+            renderTodoCategories();
+        }
+
+        function startCategoryTimer(categoryId) {
+            const category = todoCategories.find(cat => cat.id === categoryId);
+            if (!category || category.isRunning) return;
+
+            category.isRunning = true;
+            category.startTime = Date.now();
+
+            if (category.intervalId) {
+                clearInterval(category.intervalId);
+            }
+
+            category.intervalId = setInterval(() => {
+                const now = Date.now();
+                const elapsedSinceLastStart = now - category.startTime;
+                category.elapsedTime += elapsedSinceLastStart;
+                category.startTime = now;
+
+                const categoryItem = document.querySelector(`div[data-category-id="${category.id}"]`);
+                if (categoryItem) {
+                    categoryItem.querySelector('.timer-display').textContent = formatTime(category.elapsedTime);
+                }
+            }, 1000);
+        }
+
+        function stopCategoryTimer(categoryId) {
+            const category = todoCategories.find(cat => cat.id === categoryId);
+            if (!category || !category.isRunning) return;
+
+            clearInterval(category.intervalId);
+            category.isRunning = false;
+            category.elapsedTime += (Date.now() - category.startTime);
+            category.startTime = null;
+            category.intervalId = null;
+        }
+
+        function resetCategoryTimer(categoryId) {
+            const category = todoCategories.find(cat => cat.id === categoryId);
+            if (!category) return;
+
+            stopCategoryTimer(categoryId);
+            category.elapsedTime = 0;
+            saveTodoCategories();
+            renderTodoCategories();
+        }
+
+        function toggleSubTaskComplete(categoryId, subTaskId) {
+            const category = todoCategories.find(cat => cat.id === categoryId);
+            if (!category) return;
+
+            const subTask = category.subTasks.find(st => st.id === subTaskId);
+            if (subTask) {
+                subTask.completed = !subTask.completed;
+                saveTodoCategories();
+                renderTodoCategories();
+            }
+        }
+
+        function deleteTodoCategory(categoryId) {
+            const categoryIndex = todoCategories.findIndex(cat => cat.id === categoryId);
+            if (categoryIndex > -1) {
+                stopCategoryTimer(categoryId);
+                todoCategories.splice(categoryIndex, 1);
+                saveTodoCategories();
+                renderTodoCategories();
+            }
+        }
+
+        function deleteSubTask(categoryId, subTaskId) {
+            const category = todoCategories.find(cat => cat.id === categoryId);
+            if (!category) return;
+
+            category.subTasks = category.subTasks.filter(st => st.id !== subTaskId);
+            saveTodoCategories();
+            renderTodoCategories();
+        }
+
+        // --- Trac Tab Logic (unchanged) ---
+        const LOCAL_STORAGE_TRAC_KEY = 'tracData';
+        let tracData = {
+            bio: [],
+            chem: [],
+            phys: []
+        };
+
+        const tracBioSubTab = document.getElementById('tracBioSubTab');
+        const tracChemSubTab = document.getElementById('tracChemSubTab');
+        const tracPhysSubTab = document.getElementById('tracPhysSubTab');
+        const tracBioContent = document.getElementById('tracBioContent');
+        const tracChemContent = document.getElementById('tracChemContent');
+        const tracPhysContent = document.getElementById('tracPhysContent');
+
+        const newBioChapterInput = document.getElementById('newBioChapterInput');
+        const addBioChapterButton = document.getElementById('addBioChapterButton');
+        const bioChaptersDiv = document.getElementById('bioChapters');
+
+        const newChemChapterInput = document.getElementById('newChemChapterInput');
+        const addChemChapterButton = document.getElementById('addChemChapterButton');
+        const chemChaptersDiv = document.getElementById('chemChapters');
+
+        const newPhysChapterInput = document.getElementById('newPhysChapterInput');
+        const addPhysChapterButton = document.getElementById('addPhysChapterButton');
+        const physChaptersDiv = document.getElementById('physChapters');
+
+        function showTracSubTab(subject) {
+            tracBioSubTab.classList.remove('active');
+            tracChemSubTab.classList.remove('active');
+            tracPhysSubTab.classList.remove('active');
+            tracBioContent.classList.remove('active');
+            tracChemContent.classList.remove('active');
+            tracPhysContent.classList.remove('active');
+
+            if (subject === 'bio') {
+                tracBioSubTab.classList.add('active');
+                tracBioContent.classList.add('active');
+                renderTracChapters('bio');
+            } else if (subject === 'chem') {
+                tracChemSubTab.classList.add('active');
+                tracChemContent.classList.add('active');
+                renderTracChapters('chem');
+            } else if (subject === 'phys') {
+                tracPhysSubTab.classList.add('active');
+                tracPhysContent.classList.add('active');
+                renderTracChapters('phys');
+            }
+        }
+
+        tracBioSubTab.addEventListener('click', () => showTracSubTab('bio'));
+        tracChemSubTab.addEventListener('click', () => showTracSubTab('chem'));
+        tracPhysSubTab.addEventListener('click', () => showTracSubTab('phys'));
+
+        function loadTracData() {
+            const storedTracData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_TRAC_KEY));
+            if (storedTracData) {
+                tracData = storedTracData;
+            }
+        }
+
+        function saveTracData() {
+            localStorage.setItem(LOCAL_STORAGE_TRAC_KEY, JSON.stringify(tracData));
+            console.log('Trac data saved locally.');
+        }
+
+        function renderTracChapters(subject) {
+            let targetDiv;
+            let chaptersArray;
+            if (subject === 'bio') {
+                targetDiv = bioChaptersDiv;
+                chaptersArray = tracData.bio;
+            } else if (subject === 'chem') {
+                targetDiv = chemChaptersDiv;
+                chaptersArray = tracData.chem;
+            } else if (subject === 'phys') {
+                targetDiv = physChaptersDiv;
+                chaptersArray = tracData.phys;
+            } else {
+                return;
+            }
+
+            targetDiv.innerHTML = '';
+
+            if (chaptersArray.length === 0) {
+                targetDiv.innerHTML = `<p class="text-gray-500 text-center py-4">No chapters added yet. Add one above!</p>`;
+                return;
+            }
+
+            const table = document.createElement('table');
+            table.className = 'trac-table';
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th rowspan="2">Chapter Name</th>
+                        <th rowspan="2">Lec</th>
+                        <th rowspan="2">DPP</th>
+                        <th rowspan="2">Module</th>
+                        <th rowspan="2">NEET PYQ</th>
+                        <th rowspan="2">JEE PYQ</th>
+                        <th rowspan="2">REF BOOK</th>
+                        <th rowspan="2">MAINS LVL</th>
+                        <th rowspan="2">NCERT</th>
+                        <th rowspan="2">PITARA (LTL)</th>
+                        <th rowspan="2">INFINITY PRACTISE</th>
+                        <th rowspan="2">PREP METER</th>
+                        <th colspan="5">REVISION</th>
+                        <th rowspan="2">Actions</th>
+                    </tr>
+                    <tr>
+                        <th>R1</th>
+                        <th>R2</th>
+                        <th>R3</th>
+                        <th>R4</th>
+                        <th>R5</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+            const tbody = table.querySelector('tbody');
+
+            chaptersArray.forEach(chapter => {
+                const row = document.createElement('tr');
+                row.dataset.id = chapter.id;
+                row.dataset.subject = subject;
+
+                row.innerHTML = `
+                    <td>${chapter.name}</td>
+                    <td><input type="checkbox" data-column="lec" ${chapter.lec ? 'checked' : ''}></td>
+                    <td><input type="checkbox" data-column="dpp" ${chapter.dpp ? 'checked' : ''}></td>
+                    <td><input type="checkbox" data-column="module" ${chapter.module ? 'checked' : ''}></td>
+                    <td><input type="checkbox" data-column="neetPyq" ${chapter.neetPyq ? 'checked' : ''}></td>
+                    <td><input type="checkbox" data-column="jeePyq" ${chapter.jeePyq ? 'checked' : ''}></td>
+                    <td><input type="checkbox" data-column="referenceBook" ${chapter.referenceBook ? 'checked' : ''}></td>
+                    <td><input type="checkbox" data-column="mainsLvl" ${chapter.mainsLvl ? 'checked' : ''}></td>
+                    <td><input type="checkbox" data-column="ncert" ${chapter.ncert ? 'checked' : ''}></td>
+                    <td><input type="checkbox" data-column="pitaraLtl" ${chapter.pitaraLtl ? 'checked' : ''}></td>
+                    <td><input type="checkbox" data-column="infinityPractice" ${chapter.infinityPractice ? 'checked' : ''}></td>
+                    <td><input type="checkbox" data-column="prepMeter" ${chapter.prepMeter ? 'checked' : ''}></td>
+                    <td><input type="checkbox" data-column="revision1" ${chapter.revision1 ? 'checked' : ''}></td>
+                    <td><input type="checkbox" data-column="revision2" ${chapter.revision2 ? 'checked' : ''}></td>
+                    <td><input type="checkbox" data-column="revision3" ${chapter.revision3 ? 'checked' : ''}></td>
+                    <td><input type="checkbox" data-column="revision4" ${chapter.revision4 ? 'checked' : ''}></td>
+                    <td><input type="checkbox" data-column="revision5" ${chapter.revision5 ? 'checked' : ''}></td>
+                    <td><button class="btn-danger text-xs px-2 py-1 delete-chapter-btn">Delete</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            targetDiv.appendChild(table);
+
+            tbody.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', (event) => {
+                    const chapterId = parseInt(event.target.closest('tr').dataset.id);
+                    const subject = event.target.closest('tr').dataset.subject;
+                    const column = event.target.dataset.column;
+                    toggleTracCheckbox(subject, chapterId, column, event.target.checked);
+                });
+            });
+
+            tbody.querySelectorAll('.delete-chapter-btn').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const chapterId = parseInt(event.target.closest('tr').dataset.id);
+                    const subject = event.target.closest('tr').dataset.subject;
+                    deleteTracChapter(subject, chapterId);
+                });
+            });
+        }
+
+        function addTracChapter(subject, inputElement) {
+            const chapterName = inputElement.value.trim();
+            if (chapterName) {
+                const newChapter = {
+                    id: Date.now(),
+                    name: chapterName,
+                    lec: false,
+                    dpp: false,
+                    module: false,
+                    neetPyq: false,
+                    jeePyq: false,
+                    referenceBook: false,
+                    mainsLvl: false,
+                    ncert: false,
+                    pitaraLtl: false,
+                    infinityPractice: false,
+                    prepMeter: false,
+                    revision1: false,
+                    revision2: false,
+                    revision3: false,
+                    revision4: false,
+                    revision5: false
+                };
+                tracData[subject].push(newChapter);
+                inputElement.value = '';
+                saveTracData();
+                renderTracChapters(subject);
+            }
+        }
+
+        function toggleTracCheckbox(subject, chapterId, column, isChecked) {
+            const chapterIndex = tracData[subject].findIndex(c => c.id === chapterId);
+            if (chapterIndex > -1) {
+                tracData[subject][chapterIndex][column] = isChecked;
+                saveTracData();
+            }
+        }
+
+        function deleteTracChapter(subject, chapterId) {
+            tracData[subject] = tracData[subject].filter(c => c.id !== chapterId);
+            saveTracData();
+            renderTracChapters(subject);
+        }
+
+        addBioChapterButton.addEventListener('click', () => addTracChapter('bio', newBioChapterInput));
+        addChemChapterButton.addEventListener('click', () => addTracChapter('chem', newChemChapterInput));
+        addPhysChapterButton.addEventListener('click', () => addTracChapter('phys', newPhysChapterInput));
+
+        // --- Chat Logic (New Section) ---
+        const groupListDiv = document.getElementById('groupList');
+        const newGroupNameInput = document.getElementById('newGroupNameInput');
+        const createGroupButton = document.getElementById('createGroupButton');
+        const friendIdInput = document.getElementById('friendIdInput');
+        const addFriendButton = document.getElementById('addFriendButton');
+        const chatMessagesDiv = document.getElementById('chatMessages');
+        const chatMessageInput = document.getElementById('chatMessageInput');
+        const sendMessageButton = document.getElementById('sendMessageButton');
+        const currentGroupNameDisplay = document.getElementById('currentGroupName');
+
+        // Function to render the list of groups the user is a member of
+        async function renderGroups() {
+            if (!currentUserId) {
+                groupListDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">Please sign in to see groups.</p>`;
+                return;
+            }
+
+            groupListDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">Loading groups...</p>`;
+            try {
+                const groupsRef = collection(db, `artifacts/${appId}/public/data/groups`);
+                const q = query(groupsRef, where("members", "array-contains", currentUserId));
+                const querySnapshot = await getDocs(q);
+
+                groupListDiv.innerHTML = ''; // Clear loading message
+
+                if (querySnapshot.empty) {
+                    groupListDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">No groups yet. Create one!</p>`;
+                    return;
+                }
+
+                querySnapshot.forEach((doc) => {
+                    const group = doc.data();
+                    const groupItem = document.createElement('div');
+                    groupItem.className = `group-item ${doc.id === activeGroupId ? 'active-group' : ''}`;
+                    groupItem.dataset.groupId = doc.id;
+                    groupItem.innerHTML = `
+                        <span>${group.name}</span>
+                        <span class="group-members-count">${group.members.length} members</span>
+                    `;
+                    groupItem.addEventListener('click', () => selectGroup(doc.id, group.name));
+                    groupListDiv.appendChild(groupItem);
+                });
+            } catch (error) {
+                console.error("Error fetching groups:", error);
+                groupListDiv.innerHTML = `<p class="text-red-500 text-sm text-center py-2">Error loading groups.</p>`;
+            }
+        }
+
+        // Function to create a new group
+        createGroupButton.addEventListener('click', async () => {
+            const groupName = newGroupNameInput.value.trim();
+            if (!groupName || !currentUserId) {
+                alert("Group name cannot be empty and you must be logged in.");
+                return;
+            }
+
+            try {
+                const docRef = await addDoc(collection(db, `artifacts/${appId}/public/data/groups`), {
+                    name: groupName,
+                    members: [currentUserId], // Creator is automatically a member
+                    createdAt: new Date(),
+                    createdBy: currentUserId
+                });
+                console.log("Group created with ID:", docRef.id);
+                newGroupNameInput.value = '';
+                renderGroups(); // Re-render group list
+                selectGroup(docRef.id, groupName); // Automatically select the new group
+            } catch (error) {
+                console.error("Error creating group:", error);
+                alert("Failed to create group: " + error.message);
+            }
+        });
+
+        // Function to add a friend to the currently active group
+        addFriendButton.addEventListener('click', async () => {
+            const friendId = friendIdInput.value.trim();
+            if (!friendId || !activeGroupId) {
+                alert("Please enter a friend's User ID and select a group.");
+                return;
+            }
+
+            try {
+                const groupRef = doc(db, `artifacts/${appId}/public/data/groups`, activeGroupId);
+                await updateDoc(groupRef, {
+                    members: arrayUnion(friendId)
+                });
+                console.log(`Friend ${friendId} added to group ${activeGroupId}`);
+                friendIdInput.value = '';
+                renderGroups(); // Re-render group list to show updated member count
+            } catch (error) {
+                console.error("Error adding friend to group:", error);
+                alert("Failed to add friend: " + error.message);
+            }
+        });
+
+        // Function to select a group and load its messages
+        async function selectGroup(groupId, groupName) {
+            if (unsubscribeFromMessages) {
+                unsubscribeFromMessages(); // Unsubscribe from previous group's messages
+            }
+
+            activeGroupId = groupId;
+            currentGroupNameDisplay.textContent = `Chatting in: ${groupName}`;
+            chatMessagesDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">Loading messages...</p>`;
+            chatMessageInput.disabled = false;
+            sendMessageButton.disabled = false;
+
+            // Update active class for group item
+            document.querySelectorAll('.group-item').forEach(item => {
+                item.classList.remove('active-group');
+            });
+            document.querySelector(`.group-item[data-group-id="${groupId}"]`).classList.add('active-group');
+
+
+            const messagesRef = collection(db, `artifacts/${appId}/public/data/groups/${groupId}/messages`);
+            const q = query(messagesRef, orderBy("timestamp", "asc")); // Order messages by timestamp
+
+            unsubscribeFromMessages = onSnapshot(q, (snapshot) => {
+                chatMessagesDiv.innerHTML = ''; // Clear existing messages
+                if (snapshot.empty) {
+                    chatMessagesDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">No messages in this group yet. Be the first to send one!</p>`;
+                    return;
+                }
+                snapshot.forEach((doc) => {
+                    const message = doc.data();
+                    const messageElement = document.createElement('div');
+                    messageElement.className = `chat-message ${message.senderId === currentUserId ? 'self' : 'other'}`;
+                    messageElement.innerHTML = `
+                        <div class="sender">${message.senderId === currentUserId ? 'You' : message.senderId}</div>
+                        <div class="text">${message.text}</div>
+                        <div class="timestamp">${new Date(message.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                    `;
+                    chatMessagesDiv.appendChild(messageElement);
+                });
+                // Scroll to the bottom of the chat
+                chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+            }, (error) => {
+                console.error("Error listening to messages:", error);
+                chatMessagesDiv.innerHTML = `<p class="text-red-500 text-sm text-center py-2">Error loading messages.</p>`;
+            });
+        }
+
+        // Function to send a message
+        sendMessageButton.addEventListener('click', async () => {
+            const messageText = chatMessageInput.value.trim();
+            if (!messageText || !activeGroupId || !currentUserId) {
+                alert("Message cannot be empty and a group must be selected.");
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, `artifacts/${appId}/public/data/groups/${activeGroupId}/messages`), {
+                    senderId: currentUserId,
+                    text: messageText,
+                    timestamp: new Date()
+                });
+                chatMessageInput.value = ''; // Clear input field
+            } catch (error) {
+                console.error("Error sending message:", error);
+                alert("Failed to send message: " + error.message);
+            }
+        });
+
+        // Allow sending message with Enter key
+        chatMessageInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendMessageButton.click();
+            }
+        });
+
+        // --- Initial Load ---
+        window.onload = function() {
+            checkAndResetDailyTracker();
+            loadTodoCategories();
+            loadTracData();
+            showMainTab('dailyTracker'); // Default to Daily Tracker tab
+        };
+
+        // Save data before the user leaves the page
+        window.addEventListener('beforeunload', () => {
+            saveDailyTrackerData();
+            saveTodoCategories();
+            saveTracData();
+            if (unsubscribeFromMessages) {
+                unsubscribeFromMessages(); // Clean up Firestore listener
+            }
+        });
+
+        // Listen for Firebase auth state changes to update currentUserId and render groups
+        // This is already handled in the head script, but adding a listener here for clarity
+        // and to ensure renderGroups is called when currentUserId is available.
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUserId = user.uid;
+                document.getElementById('displayUserId').textContent = `Your User ID: ${user.uid}`;
+                renderGroups(); // Render groups once authenticated
+            } else {
+                currentUserId = null;
+                document.getElementById('displayUserId').textContent = `Your User ID: Not signed in`;
+                groupListDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">Please sign in to see groups.</p>`;
+                currentGroupNameDisplay.textContent = "Select a Group to Chat";
+                chatMessagesDiv.innerHTML = `<p class="text-gray-500 text-sm text-center py-2">No messages yet.</p>`;
+                chatMessageInput.disabled = true;
+                sendMessageButton.disabled = true;
+                if (unsubscribeFromMessages) {
+                    unsubscribeFromMessages();
+                }
+            }
+        });
+
+        // Ensure currentUserId is set if already authenticated on page load
+        if (auth.currentUser) {
+            currentUserId = auth.currentUser.uid;
+            document.getElementById('displayUserId').textContent = `Your User ID: ${currentUserId}`;
+            renderGroups();
+        }
     </script>
 </body>
 </html>
